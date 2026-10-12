@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b0f14">
+<title>Donanım Test</title>
+<link rel="manifest" href="./manifest.json">
+<style>
+[hidden]{display:none!important}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#0b0f14;color:#e6edf3;
+font-family:system-ui,sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+.topbar{display:flex;justify-content:space-between;align-items:center;
+padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));
+border-bottom:1px solid #222}
+.topbar h1{font-size:16px;margin:0}
+.badge{font-size:12px;padding:4px 8px;border-radius:99px;background:#1f2937;color:#8b98a5}
+.menu{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px;
+padding-bottom:calc(16px + env(safe-area-inset-bottom));
+overflow-y:auto;height:calc(100% - 56px - env(safe-area-inset-top))}
+.tile{background:#161b22;border:1px solid #222;border-radius:16px;padding:24px 8px;
+display:flex;flex-direction:column;align-items:center;gap:8px;min-height:110px}
+.tile:active{transform:scale(.97)}
+.tile.full{grid-column:1 / -1;min-height:80px;flex-direction:row;justify-content:center}
+.view{position:fixed;inset:0;padding:16px;
+padding-top:calc(16px + env(safe-area-inset-top));
+padding-bottom:calc(16px + env(safe-area-inset-bottom));
+display:flex;flex-direction:column;gap:12px;
+background:#0b0f14;overflow-y:auto;z-index:50}
+.view-head{display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.view-head h2{margin:0;font-size:18px}
+.hint,.warn{color:#8b98a5;font-size:13px;margin:0}
+.warn{color:#fbbf24}
+.btn{background:#161b22;border:1px solid #2a3340;border-radius:12px;
+padding:14px;font-size:15px;min-height:48px}
+.btn:active{background:#1f2937}
+.btn.danger{background:#3b1d1d;border-color:#5b2626;color:#fecaca}
+.btn.link{background:#1e3a5f;border-color:#2a4a7f;color:#93c5fd;text-decoration:none;
+text-align:center;display:flex;align-items:center;justify-content:center}
+.mini-btn{background:transparent;border:1px solid #2a3340;border-radius:8px;
+padding:6px 10px;font-size:13px}
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#161b22;
+padding:12px;border-radius:12px;font-size:14px}
+.mono{font-family:monospace;font-size:12px;color:#8b98a5;word-break:break-all}
+
+/* RENK — tam ekran boşluksuz */
+.color-full{position:fixed;top:0;left:0;right:0;bottom:0;
+width:100vw;height:100vh;background:#000;z-index:200;
+margin:0;padding:0;border:0;overflow:hidden}
+.color-info{position:absolute;
+top:calc(12px + env(safe-area-inset-top));right:12px;
+display:flex;gap:8px;align-items:center;background:rgba(0,0,0,.5);
+padding:8px 12px;border-radius:8px;color:#fff;font-family:monospace;
+font-size:14px;z-index:201}
+
+/* DOKUNMATİK — canvas tam ekran, UI üstte yüzer */
+#view-touch{padding:0!important;gap:0!important;overflow:hidden}
+#view-touch .view-head{
+  position:fixed;top:0;left:0;right:0;z-index:10;
+  padding:8px 12px;
+  padding-top:calc(8px + env(safe-area-inset-top));
+  background:linear-gradient(180deg,rgba(11,15,20,.85),rgba(11,15,20,0));
+  border:0;pointer-events:none;
+  display:flex;justify-content:space-between;align-items:center}
+#view-touch .view-head h2{font-size:14px;margin:0}
+#view-touch .view-head .mini-btn{
+  pointer-events:auto;
+  background:rgba(22,27,34,.9);
+  -webkit-backdrop-filter:blur(8px);
+  backdrop-filter:blur(8px)}
+.touch-wrap{position:fixed;top:0;left:0;right:0;bottom:0;z-index:1}
+#touch-canvas{position:absolute;top:0;left:0;right:0;bottom:0;
+  width:100%;height:100%;
+  background:#05080c;border:0;border-radius:0;
+  touch-action:none;display:block}
+.touch-stats{
+  position:fixed;left:12px;right:12px;
+  bottom:calc(56px + env(safe-area-inset-bottom));
+  z-index:10;
+  background:rgba(22,27,34,.8);
+  -webkit-backdrop-filter:blur(8px);
+  backdrop-filter:blur(8px);
+  border-radius:12px;padding:8px 12px;
+  font-size:12px;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  pointer-events:none;
+  border:1px solid rgba(255,255,255,.06)}
+.touch-stats .mono{grid-column:1/-1;text-align:center}
+.touch-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:10;
+  display:flex;gap:8px;padding:8px 12px;
+  padding-bottom:calc(8px + env(safe-area-inset-bottom));
+  background:transparent;border:0;pointer-events:none}
+.touch-bar .btn{
+  flex:1;padding:10px;
+  background:rgba(22,27,34,.9);
+  -webkit-backdrop-filter:blur(8px);
+  backdrop-filter:blur(8px);
+  pointer-events:auto}
+
+/* MİKROFON */
+.meter{height:20px;background:#111;border-radius:10px;overflow:hidden;border:1px solid #222}
+#mic-bar{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#eab308,#ef4444)}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <h1>Donanım Test</h1>
+  <span class="badge">v5</span>
+</header>
+
+<main id="menu" class="menu">
+  <button class="tile" data-view="color">🎨<span>Renk</span></button>
+  <button class="tile" data-view="touch">👆<span>Dokunmatik</span></button>
+  <button class="tile" data-view="speaker">🔊<span>Hoparlör</span></button>
+  <button class="tile" data-view="mic">🎤<span>Mikrofon</span></button>
+  <button class="tile" data-view="vibrate">📳<span>Titreşim</span></button>
+  <button class="tile" data-view="net">🌐<span>İnternet</span></button>
+  <button class="tile full" data-view="gps">📍<span>GPS / Konum</span></button>
+</main>
+
+<div id="color-full" class="color-full" hidden>
+  <div class="color-info">
+    <span id="color-hex">#000000</span>
+    <button id="color-exit" class="mini-btn" style="color:#fff;border-color:#666">Kapat</button>
+  </div>
+</div>
+
+<section id="view-touch" class="view" hidden>
+  <div class="view-head">
+    <h2>Dokunmatik</h2>
+    <button class="mini-btn" data-back>← Menü</button>
+  </div>
+  <div class="touch-wrap">
+    <canvas id="touch-canvas"></canvas>
+  </div>
+  <div class="touch-stats">
+    <div>Aktif: <b id="touch-active">0</b></div>
+    <div>Maks: <b id="touch-max">0</b></div>
+    <div>Toplam: <b id="touch-total">0</b></div>
+    <div id="touch-ids" class="mono"></div>
+  </div>
+  <div class="touch-bar">
+    <button id="touch-clear" class="btn">Temizle</button>
+  </div>
+</section>
+
+<section id="view-speaker" class="view" hidden>
+  <div class="view-head"><h2>Hoparlör</h2>
+    <button class="mini-btn" data-back>← Menü</button></div>
+  <p class="warn">⚠️ Sesi düşürün</p>
+  <div class="btn-grid">
+    <button class="btn" data-tone="left">Sol</button>
+    <button class="btn" data-tone="right">Sağ</button>
+    <button class="btn" data-tone="both">Stereo</button>
+    <button class="btn" data-tone="sweep">Tarama</button>
+  </div>
+  <button id="speaker-stop" class="btn danger">Durdur</button>
+  <div id="speaker-status" class="mono"></div>
+</section>
+
+<section id="view-mic" class="view" hidden>
+  <div class="view-head"><h2>Mikrofon</h2>
+    <button class="mini-btn" data-back>← Menü</button></div>
+  <button id="mic-start" class="btn">Başlat</button>
+  <div class="meter"><div id="mic-bar"></div></div>
+  <div id="mic-db" class="mono">–</div>
+  <div class="btn-grid">
+    <button id="mic-record" class="btn">5sn Kaydet</button>
+    <button id="mic-stop" class="btn danger">Durdur</button>
+  </div>
+  <audio id="mic-playback" controls hidden style="width:100%"></audio>
+  <div id="mic-status" class="mono"></div>
+</section>
+
+<section id="view-vibrate" class="view" hidden>
+  <div class="view-head"><h2>Titreşim</h2>
+    <button class="mini-btn" data-back>← Menü</button></div>
+  <div class="btn-grid">
+    <button class="btn" data-vib="100">Kısa</button>
+    <button class="btn" data-vib="1000">Uzun</button>
+    <button class="btn" data-vib="pattern">Desen</button>
+    <button class="btn danger" data-vib="0">Durdur</button>
+  </div>
+  <div id="vib-status" class="mono"></div>
+</section>
+
+<section id="view-net" class="view" hidden>
+  <div class="view-head"><h2>İnternet</h2>
+    <button class="mini-btn" data-back>← Menü</button></div>
+  <div class="stats">
+    <div>Durum: <b id="net-online">–</b></div>
+    <div>Tip: <b id="net-type">–</b></div>
+    <div>Down: <b id="net-down">–</b></div>
+    <div>RTT: <b id="net-rtt">–</b></div>
+    <div>Ping: <b id="net-ping">–</b></div>
+  </div>
+  <button id="net-test" class="btn">Test Et</button>
+</section>
+
+<section id="view-gps" class="view" hidden>
+  <div class="view-head"><h2>GPS / Konum</h2>
+    <button class="mini-btn" data-back>← Menü</button></div>
+  <p class="hint">Konum izni isteyecek. Açık alanda daha doğru sonuç verir.</p>
+  <div class="stats">
+    <div>Durum: <b id="gps-status">–</b></div>
+    <div>Doğruluk: <b id="gps-acc">–</b></div>
+    <div>Enlem: <b id="gps-lat">–</b></div>
+    <div>Boylam: <b id="gps-lon">–</b></div>
+    <div>Yükseklik: <b id="gps-alt">–</b></div>
+    <div>Yön: <b id="gps-head">–</b></div>
+    <div>Hız: <b id="gps-speed">–</b></div>
+    <div>Zaman: <b id="gps-time">–</b></div>
+  </div>
+  <a id="gps-map" class="btn link" href="#" target="_blank" rel="noopener">Haritada Aç</a>
+  <button id="gps-stop" class="btn danger">Durdur</button>
+</section>
+
+<script>
+(function(){
+'use strict';
+var $ = function(id){ return document.getElementById(id); };
+var menu = $('menu');
+var views = ['touch','speaker','mic','vibrate','net','gps'];
+var current = null;
+
+function showMenu(){
+  if (current){ closeView(current); current = null; }
+  views.forEach(function(v){ var el = $('view-'+v); if (el) el.hidden = true; });
+  $('color-full').hidden = true;
+  menu.hidden = false;
+  window.scrollTo(0,0);
+}
+function openView(name){
+  if (name === 'color'){ openColor(); return; }
+  if (current === name) return;
+  if (current) closeView(current);
+  views.forEach(function(v){
+    var el = $('view-' + v);
+    if (el) el.hidden = (v !== name);
+  });
+  menu.hidden = true;
+  current = name;
+  if (name === 'touch')   TouchTest.open();
+  if (name === 'speaker') SpeakerTest.open();
+  if (name === 'mic')     MicTest.open();
+  if (name === 'vibrate') VibrateTest.open();
+  if (name === 'net')     NetTest.open();
+  if (name === 'gps')     GeoTest.open();
+}
+function closeView(name){
+  if (name === 'touch')   TouchTest.close();
+  if (name === 'speaker') SpeakerTest.close();
+  if (name === 'mic')     MicTest.close();
+  if (name === 'vibrate') VibrateTest.close();
+  if (name === 'net')     NetTest.close();
+  if (name === 'gps')     GeoTest.close();
+}
+menu.addEventListener('click', function(e){
+  var btn = e.target.closest('.tile');
+  if (btn) openView(btn.dataset.view);
+});
+document.querySelectorAll('[data-back]').forEach(function(b){
+  b.addEventListener('click', showMenu);
+});
+
+/* ---------- RENK ---------- */
+var ColorTest = (function(){
+  var colors = ['#ff0000','#00ff00','#0000ff','#ffffff','#000000',
+                '#808080','#ff00ff','#00ffff','#ffff00'];
+  var idx = 0;
+  var full = $('color-full'), hex = $('color-hex'), info = full.querySelector('.color-info');
+
+  function paint(){
+    var c = colors[idx];
+    hex.textContent = c.toUpperCase();
+    full.style.background = c;
+    var light = ['#ffffff','#00ffff','#ffff00','#00ff00'].indexOf(c) >= 0;
+    info.style.color = light ? '#000' : '#fff';
+  }
+  function next(){ idx = (idx+1) % colors.length; paint(); }
+  function exit(){
+    full.hidden = true;
+    try{
+      if (document.fullscreenElement && document.exitFullscreen)
+        document.exitFullscreen().catch(function(){});
+    }catch(_){}
+    showMenu();
+  }
+  document.addEventListener('fullscreenchange', function(){
+    if (!document.fullscreenElement && !full.hidden){ exit(); }
+  });
+  $('color-exit').addEventListener('click', function(e){
+    e.preventDefault(); e.stopPropagation(); exit();
+  });
+  full.addEventListener('click', function(e){
+    if (e.target.closest('.color-info')) return;
+    next();
+  });
+  return { next: next, paint: paint };
+})();
+
+function openColor(){
+  menu.hidden = true;
+  var full = $('color-full');
+  full.hidden = false;
+  ColorTest.paint();
+  try{
+    if (document.documentElement.requestFullscreen)
+      document.documentElement.requestFullscreen().catch(function(){});
+  }catch(_){}
+}
+
+/* ---------- DOKUNMATİK ---------- */
+var TouchTest = (function(){
+  var canvas = $('touch-canvas'), ctx = canvas.getContext('2d');
+  var aEl = $('touch-active'), mEl = $('touch-max'),
+      tEl = $('touch-total'), iEl = $('touch-ids'),
+      cBtn = $('touch-clear');
+  var touches = new Map(), maxT = 0, total = 0, mouseDown = false;
+  var MOUSE = -1, ro = null;
+  var pal = ['#ef4444','#22c55e','#3b82f6','#eab308','#a855f7',
+             '#06b6d4','#f97316','#ec4899','#84cc16','#14b8a6'];
+
+  function colorOf(id){
+    if (id === MOUSE) return '#ffffff';
+    return pal[((id % pal.length) + pal.length) % pal.length];
+  }
+  function resize(){
+    var r = canvas.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    redraw();
+  }
+  function redraw(){
+    var w = canvas.clientWidth, h = canvas.clientHeight;
+    if (!w || !h) return;
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = '#05080c'; ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    var x, y;
+    for (x=0; x<w; x+=40){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+    for (y=0; y<h; y+=40){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+    touches.forEach(function(p,id){
+      ctx.beginPath(); ctx.arc(p.x,p.y,50,0,Math.PI*2);
+      ctx.fillStyle = colorOf(id)+'33'; ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x,p.y,30,0,Math.PI*2);
+      ctx.fillStyle = colorOf(id)+'66'; ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x,p.y,14,0,Math.PI*2);
+      ctx.fillStyle = colorOf(id); ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+      ctx.fillStyle='#fff'; ctx.font='bold 13px monospace';
+      ctx.fillText(id===MOUSE?'fare':'#'+id, p.x+20, p.y-16);
+      ctx.fillStyle='rgba(255,255,255,.7)'; ctx.font='11px monospace';
+      ctx.fillText(Math.round(p.x)+','+Math.round(p.y), p.x+20, p.y+4);
+    });
+    aEl.textContent = touches.size;
+    mEl.textContent = maxT;
+    tEl.textContent = total;
+    iEl.textContent = Array.from(touches.keys())
+      .map(function(id){ return id===MOUSE?'fare':'#'+id; }).join(' ');
+  }
+  function pos(x,y){
+    var r = canvas.getBoundingClientRect();
+    return { x: x - r.left, y: y - r.top };
+  }
+  function tStart(e){
+    e.preventDefault();
+    for (var i=0; i<e.changedTouches.length; i++){
+      var t = e.changedTouches[i];
+      touches.set(t.identifier, pos(t.clientX, t.clientY));
+      total++;
+    }
+    if (touches.size > maxT) maxT = touches.size;
+    redraw();
+  }
+  function tMove(e){
+    e.preventDefault();
+    for (var i=0; i<e.changedTouches.length; i++){
+      var t = e.changedTouches[i];
+      if (touches.has(t.identifier))
+        touches.set(t.identifier, pos(t.clientX, t.clientY));
+    }
+    redraw();
+  }
+  function tEnd(e){
+    e.preventDefault();
+    for (var i=0; i<e.changedTouches.length; i++)
+      touches.delete(e.changedTouches[i].identifier);
+    redraw();
+  }
+  function mDown(e){
+    e.preventDefault(); mouseDown = true;
+    touches.set(MOUSE, pos(e.clientX, e.clientY)); total++;
+    if (touches.size > maxT) maxT = touches.size;
+    redraw();
+  }
+  function mMove(e){
+    if (!mouseDown) return;
+    e.preventDefault();
+    touches.set(MOUSE, pos(e.clientX, e.clientY));
+    redraw();
+  }
+  function mUp(){
+    if (!mouseDown) return;
+    mouseDown = false; touches.delete(MOUSE); redraw();
+  }
+  function clear(){
+    touches.clear(); maxT = 0; total = 0; redraw();
+  }
+  return {
+    open: function(){
+      canvas.addEventListener('touchstart', tStart, {passive:false});
+      canvas.addEventListener('touchmove',  tMove,  {passive:false});
+      canvas.addEventListener('touchend',   tEnd,   {passive:false});
+      canvas.addEventListener('touchcancel',tEnd,   {passive:false});
+      canvas.addEventListener('mousedown',  mDown);
+      canvas.addEventListener('mousemove',  mMove);
+      window.addEventListener('mouseup',    mUp);
+      window.addEventListener('resize', resize);
+      window.addEventListener('orientationchange', resize);
+      cBtn.addEventListener('click', clear);
+      if ('ResizeObserver' in window){
+        if (ro){ try{ ro.disconnect(); }catch(_){} }
+        ro = new ResizeObserver(function(){ resize(); });
+        ro.observe(canvas);
+      }
+      resize(); setTimeout(resize, 100); setTimeout(resize, 300);
+    },
+    close: function(){
+      canvas.removeEventListener('touchstart', tStart);
+      canvas.removeEventListener('touchmove',  tMove);
+      canvas.removeEventListener('touchend',   tEnd);
+      canvas.removeEventListener('touchcancel',tEnd);
+      canvas.removeEventListener('mousedown',  mDown);
+      canvas.removeEventListener('mousemove',  mMove);
+      window.removeEventListener('mouseup',    mUp);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('orientationchange', resize);
+      cBtn.removeEventListener('click', clear);
+      if (ro){ try{ ro.disconnect(); }catch(_){} ro = null; }
+      touches.clear(); maxT = 0; total = 0; mouseDown = false;
+    }
+  };
+})();
+
+/* ---------- HOPARLÖR ---------- */
+var SpeakerTest = (function(){
+  var aCtx = null, osc = null, gain = null, pan = null, timer = null;
+  var st = $('speaker-status'), stopBtn = $('speaker-stop');
+  var toneBtns = Array.prototype.slice.call(document.querySelectorAll('[data-tone]'));
+  var handlers = {};
+
+  function ensure(){
+    if (!aCtx) aCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if (aCtx.state === 'suspended' || aCtx.state === 'interrupted'){
+      aCtx.resume().catch(function(){});
+    }
+  }
+  function stop(){
+    if (timer){ clearInterval(timer); timer = null; }
+    if (osc){ try{ osc.stop(); }catch(_){} try{ osc.disconnect(); }catch(_){} osc = null; }
+    if (gain){ try{ gain.disconnect(); }catch(_){} gain = null; }
+    if (pan){ try{ pan.disconnect(); }catch(_){} pan = null; }
+    if (st) st.textContent = 'durduruldu';
+  }
+  function play(o){
+    o = o || {};
+    var p = o.pan != null ? o.pan : 0;
+    var f = o.freq || 440;
+    ensure(); stop();
+    osc = aCtx.createOscillator(); gain = aCtx.createGain();
+    pan = aCtx.createStereoPanner ? aCtx.createStereoPanner() : null;
+    osc.type = 'sine'; osc.frequency.value = f; gain.gain.value = 0.15;
+    osc.connect(gain);
+    if (pan){ pan.pan.value = p; gain.connect(pan); pan.connect(aCtx.destination); }
+    else gain.connect(aCtx.destination);
+    osc.start();
+    if (o.sweep){
+      var fr = 20; osc.frequency.value = fr;
+      st.textContent = 'sweep: 20 Hz';
+      timer = setInterval(function(){
+        fr *= 1.08;
+        if (fr > 20000){ stop(); return; }
+        osc.frequency.value = fr;
+        st.textContent = 'sweep: ' + Math.round(fr) + ' Hz';
+      }, 100);
+    } else {
+      st.textContent = 'çalıyor ' + f + ' Hz';
+      setTimeout(function(){ if (osc) stop(); }, 2000);
+    }
+  }
+  function onStop(){ stop(); }
+
+  return {
+    open: function(){
+      toneBtns.forEach(function(b){
+        var t = b.dataset.tone;
+        handlers[t] = function(){
+          if (t === 'left')  play({pan:-1});
+          if (t === 'right') play({pan:1});
+          if (t === 'both')  play({pan:0});
+          if (t === 'sweep') play({sweep:true});
+        };
+        b.addEventListener('click', handlers[t]);
+      });
+      stopBtn.addEventListener('click', onStop);
+      st.textContent = 'hazır';
+    },
+    close: function(){
+      stop();
+      toneBtns.forEach(function(b){
+        var t = b.dataset.tone;
+        if (handlers[t]) b.removeEventListener('click', handlers[t]);
+      });
+      stopBtn.removeEventListener('click', onStop);
+    }
+  };
+})();
+
+/* ---------- MİKROFON ---------- */
+var MicTest = (function(){
+  var stream = null, aCtx = null, an = null, buf = null, raf = null;
+  var rec = null, chunks = [], pending = false, sessionId = 0;
+  var bar = $('mic-bar'), dbEl = $('mic-db'), st = $('mic-status'),
+      pb = $('mic-playback'), sBtn = $('mic-start'),
+      eBtn = $('mic-stop'), rBtn = $('mic-record');
+
+  function start(){
+    if (stream || pending){ st.textContent = 'zaten aktif'; return; }
+    pending = true;
+    var mySession = ++sessionId;
+    navigator.mediaDevices.getUserMedia({audio:true}).then(function(s){
+      pending = false;
+      if (mySession !== sessionId){
+        s.getTracks().forEach(function(t){ try{ t.stop(); }catch(_){} });
+        return;
+      }
+      stream = s;
+      aCtx = new (window.AudioContext||window.webkitAudioContext)();
+      var src = aCtx.createMediaStreamSource(stream);
+      an = aCtx.createAnalyser(); an.fftSize = 1024;
+      buf = new Uint8Array(an.frequencyBinCount);
+      src.connect(an);
+      st.textContent = 'aktif'; loop();
+    }).catch(function(e){
+      pending = false;
+      st.textContent = 'Hata: ' + e.name;
+    });
+  }
+  function loop(){
+    if (!an) return;
+    an.getByteTimeDomainData(buf);
+    var s = 0;
+    for (var i=0; i<buf.length; i++){ var v=(buf[i]-128)/128; s+=v*v; }
+    var rms = Math.sqrt(s/buf.length);
+    bar.style.width = Math.min(100, rms*200) + '%';
+    dbEl.textContent = 'RMS: ' + rms.toFixed(3);
+    raf = requestAnimationFrame(loop);
+  }
+  function stop(){
+    sessionId++;
+    if (raf) cancelAnimationFrame(raf); raf = null;
+    bar.style.width = '0%'; dbEl.textContent = '–';
+    if (rec && rec.state === 'recording'){ try{ rec.stop(); }catch(_){} }
+    rec = null;
+    if (stream){ stream.getTracks().forEach(function(t){ try{ t.stop(); }catch(_){} }); stream = null; }
+    if (aCtx){ try{ aCtx.close(); }catch(_){} aCtx = null; }
+    an = null; buf = null;
+    st.textContent = 'durduruldu';
+  }
+  function record(){
+    if (!stream){ st.textContent = 'önce başlat'; return; }
+    if (rec && rec.state === 'recording') return;
+    chunks = [];
+    try{ rec = new MediaRecorder(stream); }
+    catch(e){ st.textContent = 'MediaRecorder yok'; return; }
+    rec.ondataavailable = function(e){ if (e.data.size) chunks.push(e.data); };
+    rec.onstop = function(){
+      if (!chunks.length){ st.textContent = 'boş'; return; }
+      var blob = new Blob(chunks, {type: chunks[0].type || 'audio/webm'});
+      if (pb.src){ try{ URL.revokeObjectURL(pb.src); }catch(_){} }
+      pb.src = URL.createObjectURL(blob); pb.hidden = false;
+      st.textContent = 'kayıt hazır';
+    };
+    rec.start(); st.textContent = 'kaydediliyor…';
+    setTimeout(function(){ if (rec && rec.state==='recording') rec.stop(); }, 5000);
+  }
+  function onStart(){ start(); }
+  function onStop(){ stop(); }
+
+  return {
+    open: function(){
+      sBtn.addEventListener('click', onStart);
+      eBtn.addEventListener('click', onStop);
+      rBtn.addEventListener('click', record);
+      st.textContent = 'hazır';
+    },
+    close: function(){
+      sBtn.removeEventListener('click', onStart);
+      eBtn.removeEventListener('click', onStop);
+      rBtn.removeEventListener('click', record);
+      stop();
+      pb.hidden = true;
+      if (pb.src){ try{ URL.revokeObjectURL(pb.src); }catch(_){} pb.src=''; }
+    }
+  };
+})();
+
+/* ---------- TİTREŞİM ---------- */
+var VibrateTest = (function(){
+  var st = $('vib-status');
+  var btns = Array.prototype.slice.call(document.querySelectorAll('[data-vib]'));
+  var handlers = {};
+
+  function vib(v){
+    if (!('vibrate' in navigator)){ st.textContent = 'desteklenmiyor'; return; }
+    if (v === '0'){ navigator.vibrate(0); st.textContent = 'durduruldu'; return; }
+    if (v === 'pattern'){
+      navigator.vibrate([200,100,200,100,500]);
+      st.textContent = 'desen'; return;
+    }
+    navigator.vibrate(parseInt(v,10));
+    st.textContent = 'titreşim: ' + v + ' ms';
+  }
+  return {
+    open: function(){
+      btns.forEach(function(b){
+        var v = b.dataset.vib;
+        handlers[v] = function(){ vib(v); };
+        b.addEventListener('click', handlers[v]);
+      });
+      st.textContent = ('vibrate' in navigator) ? 'destekleniyor' : 'desteklenmiyor';
+    },
+    close: function(){
+      if ('vibrate' in navigator) navigator.vibrate(0);
+      btns.forEach(function(b){
+        var v = b.dataset.vib;
+        if (handlers[v]) b.removeEventListener('click', handlers[v]);
+      });
+    }
+  };
+})();
+
+/* ---------- İNTERNET ---------- */
+var NetTest = (function(){
+  var onEl = $('net-online'), tEl = $('net-type'), dEl = $('net-down'),
+      rEl = $('net-rtt'), pEl = $('net-ping'), testBtn = $('net-test');
+
+  function upOn(){
+    onEl.textContent = navigator.onLine ? 'çevrimiçi' : 'çevrimdışı';
+    onEl.style.color = navigator.onLine ? '#22c55e' : '#ef4444';
+  }
+  function upConn(){
+    var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!c){ tEl.textContent='–'; dEl.textContent='–'; rEl.textContent='–'; return; }
+    tEl.textContent = c.effectiveType || '–';
+    dEl.textContent = c.downlink != null ? c.downlink + ' Mb/s' : '–';
+    rEl.textContent = c.rtt != null ? c.rtt + ' ms' : '–';
+  }
+  function ping(){
+    pEl.textContent = 'ölçülüyor…';
+    var t0 = performance.now();
+    fetch('https://www.google.com/generate_204', {mode:'no-cors', cache:'no-store'})
+      .then(function(){ pEl.textContent = Math.round(performance.now()-t0) + ' ms'; })
+      .catch(function(){ pEl.textContent = 'başarısız'; });
+  }
+  return {
+    open: function(){
+      upOn(); upConn();
+      window.addEventListener('online', upOn);
+      window.addEventListener('offline', upOn);
+      var c = navigator.connection;
+      if (c) c.addEventListener('change', upConn);
+      testBtn.addEventListener('click', ping);
+    },
+    close: function(){
+      window.removeEventListener('online', upOn);
+      window.removeEventListener('offline', upOn);
+      var c = navigator.connection;
+      if (c) c.removeEventListener('change', upConn);
+      testBtn.removeEventListener('click', ping);
+    }
+  };
+})();
+
+/* ---------- GPS ---------- */
+var GeoTest = (function(){
+  var sEl = $('gps-status'), aEl = $('gps-acc'), laEl = $('gps-lat'),
+      loEl = $('gps-lon'), alEl = $('gps-alt'), hEl = $('gps-head'),
+      spEl = $('gps-speed'), tEl = $('gps-time'), mapEl = $('gps-map'),
+      stopBtn = $('gps-stop');
+  var watchId = null;
+
+  function errMsg(err){
+    var m = {1:'izin reddedildi', 2:'konum alınamadı', 3:'zaman aşımı'};
+    return m[err.code] || err.message || 'bilinmeyen hata';
+  }
+  function onPos(pos){
+    var c = pos.coords;
+    laEl.textContent = c.latitude.toFixed(6);
+    loEl.textContent = c.longitude.toFixed(6);
+    aEl.textContent = c.accuracy != null ? ('±' + Math.round(c.accuracy) + ' m') : '–';
+    alEl.textContent = c.altitude != null ? (Math.round(c.altitude) + ' m') : '–';
+    hEl.textContent = c.heading != null ? (Math.round(c.heading) + '°') : '–';
+    spEl.textContent = c.speed != null ? ((c.speed*3.6).toFixed(1) + ' km/s') : '–';
+    tEl.textContent = new Date(pos.timestamp).toLocaleTimeString('tr-TR');
+    sEl.textContent = 'aktif';
+    sEl.style.color = '#22c55e';
+    mapEl.href = 'https://www.google.com/maps?q=' + c.latitude + ',' + c.longitude;
+  }
+  function onErr(err){
+    sEl.textContent = 'Hata: ' + errMsg(err);
+    sEl.style.color = '#ef4444';
+  }
+  function start(){
+    if (!navigator.geolocation){
+      sEl.textContent = 'desteklenmiyor';
+      sEl.style.color = '#ef4444';
+      return;
+    }
+    sEl.textContent = 'konum alınıyor…';
+    sEl.style.color = '#8b98a5';
+    watchId = navigator.geolocation.watchPosition(
+      onPos, onErr,
+      {enableHighAccuracy: true, timeout: 20000, maximumAge: 0}
+    );
+  }
+  function stop(){
+    if (watchId != null){
+      try{ navigator.geolocation.clearWatch(watchId); }catch(_){}
+      watchId = null;
+    }
+    if (sEl) sEl.textContent = 'durduruldu';
+  }
+  function onStopClick(){ stop(); }
+
+  return {
+    open: function(){
+      if (stopBtn) stopBtn.addEventListener('click', onStopClick);
+      start();
+    },
+    close: function(){
+      if (stopBtn) stopBtn.removeEventListener('click', onStopClick);
+      stop();
+    }
+  };
+})();
+
+})();
+</script>
+</body>
+</html>
